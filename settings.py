@@ -1,0 +1,19 @@
+import os
+from logging import DEBUG
+
+
+APP_NAME = 'entityextractor'
+
+CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+
+WORK_DIRECTORY_NAME = 'work'
+
+MODELS_DIRECTORY_NAME = 'models'
+
+WORK_DIRECTORY = os.path.join(CURRENT_DIRECTORY, WORK_DIRECTORY_NAME)
+
+MODELS_DIRECTORY = os.path.join(CURRENT_DIRECTORY, MODELS_DIRECTORY_NAME)
+
+WORK_MODELS_DIRECTORY = os.path.join(WORK_DIRECTORY, MODELS_DIRECTORY_NAME)
+
+LOGGING_LEVEL = DEBUG
