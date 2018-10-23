@@ -180,7 +180,7 @@ def extract_entities(model_name):
     model_name = model_name.lower()
 
     if model_name not in MODELS:
-        return jsonify({'error': 'incorrect model name', 'ok': 0}), 200
+        return jsonify({'error': 'Incorrect model name', 'ok': 0}), 200
 
     data = request.get_json()
 

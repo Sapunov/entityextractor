@@ -39,14 +39,14 @@ class BaseModel:
 
         return self.props['version']
 
-    def coverage(self, text, facts):
+    def coverage(self, text, spans):
         '''Возращает процент использованных символов (от 0 до 1)
         '''
 
-        if not facts:
+        if not spans:
             return 0
 
-        filled = sum(fact['span']['end'] - fact['span']['start'] for fact in facts)
+        filled = sum(span[1] - span[0] for span in spans)
         filled = filled if filled > 0 else 1
 
         return round(filled / len(text), 2)
@@ -89,6 +89,10 @@ class BaseModel:
     def get_facts(self, text):
 
         facts = []
+        # Так как можно один факт раскладыать на несколько,
+        # то при расчете coverage нужно брать только исходные
+        # spans
+        spans = []
 
         for grammar, match in self.get_nonoverlapping_matches(text):
             facts.append(self.get_fact_dict(
@@ -96,6 +100,7 @@ class BaseModel:
                 match.fact.as_json,
                 match.span[0],
                 match.span[1]))
+            spans.append((match.span[0], match.span[1]))
 
         # Postprocess all facts each time
         for func in self.postprocess_all_facts:
@@ -108,17 +113,17 @@ class BaseModel:
                 if new_fact:
                     facts[i] = new_fact
 
-        return facts
+        return (facts, spans)
 
 
     def extract(self, text):
 
-        facts = self.get_facts(text)
+        facts, source_spans = self.get_facts(text)
 
         return {
             'model_name': self.model_name,
             'model_version': self.model_version,
             'raw': text,
-            'coverage': self.coverage(text, facts),
+            'coverage': self.coverage(text, source_spans),
             'facts': facts
         }
