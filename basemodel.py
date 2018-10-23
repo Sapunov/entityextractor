@@ -9,35 +9,52 @@ PROPERTIES_FILENAME = 'properties.json'
 
 
 class BaseModel:
+    '''Базовая модель
+    '''
 
     def __init__(self):
+        '''Конструктор
+        '''
 
         with open(os.path.join(CURRENT_DIR, PROPERTIES_FILENAME)) as fid:
             self.props = json.load(fid)
 
         self.parsers = {} # grammar -> parser
 
+        # Processors
+        self.postprocess_all_facts = []
+        self.postprocess_fact = []
+
     @property
     def model_name(self):
+        '''Возвращает имя подели из properties.json
+        '''
 
         return self.props['name']
 
     @property
     def model_version(self):
+        '''Возвращает версию модели из properties.json
+        '''
 
         return self.props['version']
 
-    def coverage(self, text, spans):
+    def coverage(self, text, facts):
+        '''Возращает процент использованных символов (от 0 до 1)
+        '''
 
-        if not spans:
+        if not facts:
             return 0
 
-        filled = sum((_.get('end', 0) - _.get('start', 0)) for _ in spans)
+        filled = sum(fact['span']['end'] - fact['span']['start'] for fact in facts)
         filled = filled if filled > 0 else 1
 
         return round(filled / len(text), 2)
 
     def get_nonoverlapping_matches(self, text):
+        '''Возвращает список matches с непересекающимися spans.
+           Применяет сразу все грамматики, перечисленные в self.parsers
+        '''
 
         intervals = IntervalTree()
         matches = []
@@ -57,3 +74,51 @@ class BaseModel:
                 nonoverlapping_matches.append((grammar, match))
 
         return nonoverlapping_matches
+
+    def get_fact_dict(self, grammar, fact_json, start, stop):
+
+        return {
+            'grammar': grammar,
+            'fact': fact_json,
+            'span': {
+                'start': start,
+                'end': stop
+            }
+        }
+
+    def get_facts(self, text):
+
+        facts = []
+
+        for grammar, match in self.get_nonoverlapping_matches(text):
+            facts.append(self.get_fact_dict(
+                grammar,
+                match.fact.as_json,
+                match.span[0],
+                match.span[1]))
+
+        # Postprocess all facts each time
+        for func in self.postprocess_all_facts:
+            func(facts)
+
+        # Postprocess each fact
+        for i, fact in enumerate(facts):
+            for func in self.postprocess_fact:
+                new_fact = func(fact)
+                if new_fact:
+                    facts[i] = new_fact
+
+        return facts
+
+
+    def extract(self, text):
+
+        facts = self.get_facts(text)
+
+        return {
+            'model_name': self.model_name,
+            'model_version': self.model_version,
+            'raw': text,
+            'coverage': self.coverage(text, facts),
+            'facts': facts
+        }
