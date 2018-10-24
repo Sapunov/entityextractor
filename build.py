@@ -13,6 +13,11 @@ BASEMODEL = os.path.join(THIS_DIR, BASEMODEL_NAME)
 SANBOX = os.path.join(THIS_DIR, '_sandbox')
 
 
+def hash_of_files(directory):
+
+    pass
+
+
 def update_version(props_file):
 
     version_pattern = '([0-9]{4}-[0-9]{2}-[0-9]{2})\.([0-9]+)'
@@ -24,10 +29,15 @@ def update_version(props_file):
     current_version = props['version']
     date, seq = re.match(version_pattern, current_version).groups()
 
-    seq = int(seq)
     new_date = datetime.now().strftime('%Y-%m-%d')
+    seq = int(seq)
 
-    new_version = '{0}.{1}'.format(new_date, seq + 1)
+    if date != new_date:
+        seq = 1
+    else:
+        seq += 1
+
+    new_version = '{0}.{1}'.format(new_date, seq)
     props['version'] = new_version
 
     with open(props_file, 'w') as fid:
@@ -52,9 +62,13 @@ def build_models():
         shutil.copy(BASEMODEL, model_basemodel)
 
         line = 'zip -j -r models/{target_name}.zip {model_dir}'.format(
-            target_name=model_dir, model_dir=full_model_dir)
+            target_name=model_dir,
+            model_dir=full_model_dir)
 
-        subprocess.Popen(line.split(' '))
+        parts = line.split(' ')
+        subprocess.Popen(parts)
+
+
 
 
 def main():
