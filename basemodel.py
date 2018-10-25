@@ -1,11 +1,60 @@
 import json
 import os
+import re
+from string import punctuation
 
 from intervaltree import IntervalTree
 
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROPERTIES_FILENAME = 'properties.json'
+
+
+def remove_spaces(text):
+
+    pattern = '\s+'
+    return re.sub(pattern, '', text)
+
+
+def has_valuable_chars(text):
+
+    without_spaces = remove_spaces(text)
+
+    if all(char in punctuation for char in without_spaces):
+        return False
+    return True
+
+
+def delete_spans_from_text(text, spans):
+    '''Удаляет куски текста из text
+    '''
+    intervals = IntervalTree()
+
+    for start, end in spans:
+        intervals[start:end] = True
+
+    chars = list(text)
+
+    for i, _ in enumerate(text):
+        if intervals[i]:
+            chars[i] = None
+
+    result_string = ''.join(char for char in chars if char is not None)
+
+    if has_valuable_chars(result_string):
+        return result_string
+    return ''
+
+
+def calc_coverage(text, remains):
+    '''Возращает процент использованных символов (от 0 до 1)
+    '''
+
+    text_len = len(text)
+    text_len = text_len if text_len > 0 else 1
+    result = 1.0 - float(len(remains)) / float(text_len)
+
+    return round(result, 2)
 
 
 class BaseModel:
@@ -38,18 +87,6 @@ class BaseModel:
         '''
 
         return self.props['version']
-
-    def coverage(self, text, spans):
-        '''Возращает процент использованных символов (от 0 до 1)
-        '''
-
-        if not spans:
-            return 0
-
-        filled = sum(span[1] - span[0] for span in spans)
-        filled = filled if filled > 0 else 1
-
-        return round(filled / len(text), 2)
 
     def get_nonoverlapping_matches(self, text):
         '''Возвращает список matches с непересекающимися spans.
@@ -120,10 +157,14 @@ class BaseModel:
 
         facts, source_spans = self.get_facts(text)
 
+        remains = delete_spans_from_text(text, source_spans)
+        coverage = calc_coverage(text, remains)
+
         return {
             'model_name': self.model_name,
             'model_version': self.model_version,
             'raw': text,
-            'coverage': self.coverage(text, source_spans),
-            'facts': facts
+            'coverage': coverage,
+            'facts': facts,
+            'remains': remains
         }
